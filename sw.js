@@ -2,7 +2,7 @@
 // from a home-screen icon. Navigations go network-first (fresh HTML when
 // online), assets go cache-first with a background refresh.
 
-const VERSION = 'lance-crown-v1';
+const VERSION = 'lance-crown-v2';
 
 const PRECACHE = [
   './',
