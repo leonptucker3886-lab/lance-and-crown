@@ -278,7 +278,9 @@ function renderIdle(t) {
 
 let last = performance.now();
 function loop(now) {
-  const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+  // Clamp high enough that a janky frame rate still advances game time at
+  // roughly real speed: at 0.05 a 12fps phone ran the whole tilt in slow motion.
+  const dt = Math.min(0.1, Math.max(0, (now - last) / 1000));
   last = now;
   // Keep a local handle: update() can end the tilt and clear `match`, and the
   // finished match still needs one final frame drawn.
@@ -299,7 +301,9 @@ function loop(now) {
 function resize() {
   W = Math.max(1, window.innerWidth);
   H = Math.max(1, window.innerHeight);
-  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  // Full-screen canvas is fill-rate bound on phones; 2.5 was ~44% more pixels
+  // than 2 for no visible gain on a 3x display.
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.round(W * dpr);
   canvas.height = Math.round(H * dpr);
   canvas.style.width = W + 'px';
