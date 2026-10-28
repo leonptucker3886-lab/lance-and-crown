@@ -1,0 +1,525 @@
+// Bootstrap: save state, screens, ladder/armory, and the render loop.
+
+import * as Art from './art.js';
+import { Match } from './match.js';
+import {
+  RIVALS,
+  UPGRADES,
+  MAX_LEVEL,
+  playerStats,
+  rivalStats,
+  upgradeCost,
+  loadSave,
+  saveGame,
+  emptySave,
+} from './data.js';
+import { Sfx, unlock, setMuted } from './audio.js';
+
+const $ = (id) => document.getElementById(id);
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI'];
+
+let save = loadSave();
+let match = null;
+let currentRival = null;
+let pendingRival = null;
+let helpReturn = 'scr-title';
+let armoryReturn = 'scr-ladder';
+let W = 1;
+let H = 1;
+let idleT = 0;
+
+const canvas = $('stage');
+const ctx = canvas.getContext('2d', { alpha: false });
+
+/* ------------------------------------------------------------- screens */
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === id));
+}
+
+function hideScreens() {
+  document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
+}
+
+/* ---------------------------------------------------------------- HUD */
+
+const ui = {
+  setPass(n) {
+    $('passnum').textContent = 'PASS ' + n;
+  },
+  prompt(main, sub = '', tone = '') {
+    const m = $('callout-main');
+    const s = $('callout-sub');
+    m.textContent = main;
+    s.textContent = sub || '';
+    m.style.color = tone === 'gold' ? '#ffe6a8' : tone === 'dim' ? '#c7b79c' : '#fff6e2';
+    m.classList.remove('pop');
+    s.classList.remove('pop');
+    void m.offsetWidth;
+    m.classList.add('pop');
+    s.classList.add('pop');
+  },
+  toast(text) {
+    const t = $('toast');
+    t.textContent = text;
+    t.classList.remove('pop');
+    void t.offsetWidth;
+    t.classList.add('pop');
+  },
+};
+
+function setBar(el, frac) {
+  const key = Math.round(frac * 400);
+  if (el.dataset.k !== String(key)) {
+    el.dataset.k = key;
+    el.style.width = (Math.max(0, Math.min(1, frac)) * 100).toFixed(1) + '%';
+  }
+}
+
+function setPlates(el, fighter) {
+  const kids = el.children;
+  for (let i = 0; i < kids.length; i++) {
+    const z = kids[i].dataset.z;
+    const max = fighter.maxPlates[z] || 1;
+    const cur = fighter.plates[z] || 0;
+    const frac = cur / max;
+    const state = frac <= 0.02 ? 'broken' : frac < 0.45 ? 'low' : 'ok';
+    if (kids[i].dataset.state !== state) kids[i].dataset.state = state;
+  }
+}
+
+function syncHUD() {
+  if (!match) return;
+  setBar($('hp-you'), match.you.hp / match.you.maxHP);
+  setBar($('hp-foe'), match.foe.hp / match.foe.maxHP);
+  setPlates($('plates-you'), match.you);
+  setPlates($('plates-foe'), match.foe);
+}
+
+/* -------------------------------------------------------------- screens */
+
+function updateTitle() {
+  $('title-gold').textContent = save.gold;
+  $('title-wins').textContent = save.beaten.length + '/' + RIVALS.length;
+  $('title-level').textContent = save.up.lance + save.up.armor + save.up.horse;
+}
+
+function isUnlocked(i) {
+  return i === 0 || save.beaten.includes(RIVALS[i - 1].id);
+}
+
+function renderLadder() {
+  $('ladder-gold').textContent = save.gold;
+  const list = $('ladder-list');
+  list.innerHTML = '';
+  RIVALS.forEach((r, i) => {
+    const unlocked = isUnlocked(i);
+    const beaten = save.beaten.includes(r.id);
+    const el = document.createElement('button');
+    el.className = 'rival-row' + (beaten ? ' beaten' : '') + (unlocked ? '' : ' locked');
+    el.disabled = !unlocked;
+    el.innerHTML = `
+      <span class="rank" style="color:${beaten ? '#7fd07f' : r.pal.cloth2}">${beaten ? '&#10003;' : ROMAN[i]}</span>
+      <div class="body">
+        <div class="nm">${r.name}</div>
+        <div class="hs">${r.house}</div>
+      </div>
+      <div class="rw">${unlocked ? r.reward : '\u2014'}<small>${beaten ? 'defeated' : unlocked ? 'purse' : 'locked'}</small></div>`;
+    el.addEventListener('click', () => {
+      unlock();
+      Sfx.ui();
+      startMatch(r);
+    });
+    list.appendChild(el);
+  });
+}
+
+function renderArmory() {
+  $('armory-gold').textContent = save.gold;
+  const wrap = $('armory-list');
+  wrap.innerHTML = '';
+  Object.keys(UPGRADES).forEach((key) => {
+    const lvl = save.up[key] || 0;
+    const maxed = lvl >= MAX_LEVEL;
+    const cost = upgradeCost(key, lvl);
+    const afford = cost !== null && save.gold >= cost;
+    const pips = Array.from({ length: MAX_LEVEL }, (_, i) => `<i class="${i < lvl ? 'on' : ''}"></i>`).join('');
+    const card = document.createElement('div');
+    card.className = 'up-card';
+    card.innerHTML = `
+      <h3>${UPGRADES[key].name} <span style="color:var(--ink-dim);font-size:12px;letter-spacing:.1em">LV ${lvl}/${MAX_LEVEL}</span></h3>
+      <p>${maxed ? UPGRADES[key].blurbMax : UPGRADES[key].blurb}</p>
+      <div class="pips">${pips}</div>
+      <div class="up-row">
+        <span class="cost">${maxed ? 'Masterwork' : '\u25C6 ' + cost}</span>
+        <button class="btn primary" data-buy="${key}" ${maxed || !afford ? 'disabled' : ''}>${maxed ? 'Maxed' : afford ? 'Upgrade' : 'Need gold'}</button>
+      </div>`;
+    wrap.appendChild(card);
+  });
+
+  wrap.querySelectorAll('[data-buy]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.buy;
+      const lvl = save.up[key] || 0;
+      const cost = upgradeCost(key, lvl);
+      if (cost === null || lvl >= MAX_LEVEL || save.gold < cost) return;
+      save.gold -= cost;
+      save.up[key] = lvl + 1;
+      saveGame(save);
+      Sfx.upgrade();
+      renderArmory();
+      updateTitle();
+    });
+  });
+}
+
+/* --------------------------------------------------------------- match */
+
+function startMatch(rival) {
+  if (!save.seenTutorial) {
+    pendingRival = rival;
+    helpReturn = 'scr-ladder';
+    show('scr-help');
+    return;
+  }
+  launch(rival);
+}
+
+function launch(rival) {
+  currentRival = rival;
+  pendingRival = null;
+  unlock();
+  hideScreens();
+  document.body.classList.add('in-match');
+
+  const stats = playerStats(save.up);
+  const foeStats = rivalStats(rival);
+  match = new Match({
+    rival,
+    stats,
+    foeStats,
+    ui,
+    onFinish: endMatch,
+  });
+  match.layout(W, H);
+  match.start();
+
+  $('foe-who').textContent = rival.name;
+  $('hp-you').dataset.k = '';
+  $('hp-foe').dataset.k = '';
+  syncHUD();
+}
+
+function endMatch(res) {
+  match = null;
+  document.body.classList.remove('in-match');
+  const ps = playerStats(save.up);
+
+  let gold = 0;
+  if (res.win) {
+    gold = res.rival.reward + Math.round((Math.max(0, res.youHP) / ps.maxHP) * 30);
+    if (!save.beaten.includes(res.rival.id)) save.beaten.push(res.rival.id);
+  } else {
+    gold = Math.floor(res.rival.reward * 0.2);
+  }
+  save.gold += gold;
+  save.runs += 1;
+  saveGame(save);
+  Sfx.coin();
+  updateTitle();
+
+  if (res.win && save.beaten.length >= RIVALS.length) {
+    $('champ-gold').textContent = save.gold;
+    $('champ-runs').textContent = save.runs;
+    show('scr-champion');
+    return;
+  }
+
+  $('res-kicker').textContent = res.win ? 'PASS ' + res.rival.name.split(' ').slice(-1)[0] : 'THE SAND';
+  $('res-title').textContent = res.win ? 'Victory' : 'Unhorsed';
+  $('res-sub').textContent = res.win
+    ? 'You put ' + res.rival.name + ' in the dirt.'
+    : 'You hit the sand. ' + res.rival.name + ' rides on.';
+  $('res-gold').textContent = '+' + gold;
+  $('res-passes').textContent = res.passes;
+  $('res-hp').textContent = Math.max(0, Math.round(res.youHP));
+  document.querySelector('.result-card').classList.toggle('lose', !res.win);
+  show('scr-result');
+}
+
+/* ---------------------------------------------------------------- loop */
+
+function renderIdle(t) {
+  ctx.clearRect(0, 0, W, H);
+  const groundY = H * 0.72;
+  Art.drawArena(ctx, { W, H, t, scroll: t * 64, groundY });
+  const k = Math.min((H * 0.19) / Art.ART_H, (W * 0.3) / 104);
+  Art.drawKnight(ctx, {
+    x: W * 0.24,
+    y: groundY,
+    k,
+    facing: 1,
+    pal: Art.HERO_PAL,
+    t,
+    gait: t * 3.4 + 0.4,
+    couch: 0.12,
+  });
+  Art.drawKnight(ctx, {
+    x: W * 0.78,
+    y: groundY,
+    k,
+    facing: -1,
+    pal: RIVALS[5].pal,
+    t: t + 1.7,
+    gait: t * 3.4,
+    couch: 0.12,
+  });
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+  last = now;
+  // Keep a local handle: update() can end the tilt and clear `match`, and the
+  // finished match still needs one final frame drawn.
+  const m = match;
+  if (m) {
+    if (!m.paused) m.update(dt);
+    m.render(ctx);
+    if (match === m) syncHUD();
+  } else {
+    idleT += dt;
+    renderIdle(idleT);
+  }
+  requestAnimationFrame(loop);
+}
+
+/* -------------------------------------------------------------- resize */
+
+function resize() {
+  W = Math.max(1, window.innerWidth);
+  H = Math.max(1, window.innerHeight);
+  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  Art.prepare(W, H, dpr);
+  if (match) match.layout(W, H);
+}
+
+/* --------------------------------------------------------------- input */
+
+canvas.addEventListener(
+  'pointerdown',
+  (e) => {
+    unlock();
+    if (!match || match.paused) return;
+    e.preventDefault();
+    match.tap();
+  },
+  { passive: false }
+);
+
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+document.addEventListener('dblclick', (e) => e.preventDefault());
+
+/* -------------------------------------------------------------- wiring */
+
+$('btn-play').addEventListener('click', () => {
+  unlock();
+  Sfx.ui();
+  renderLadder();
+  show('scr-ladder');
+});
+
+$('btn-armory').addEventListener('click', () => {
+  Sfx.ui();
+  armoryReturn = 'scr-title';
+  renderArmory();
+  show('scr-armory');
+});
+
+$('btn-ladder-armory').addEventListener('click', () => {
+  Sfx.ui();
+  armoryReturn = 'scr-ladder';
+  renderArmory();
+  show('scr-armory');
+});
+
+$('btn-armory-back').addEventListener('click', () => {
+  Sfx.ui();
+  if (armoryReturn === 'scr-title') {
+    updateTitle();
+    show('scr-title');
+  } else {
+    renderLadder();
+    show('scr-ladder');
+  }
+});
+
+$('btn-help').addEventListener('click', () => {
+  Sfx.ui();
+  helpReturn = 'scr-title';
+  pendingRival = null;
+  $('btn-help-start').textContent = 'Understood';
+  show('scr-help');
+});
+
+$('btn-help-back').addEventListener('click', () => {
+  Sfx.ui();
+  pendingRival = null;
+  show(helpReturn);
+});
+
+$('btn-help-start').addEventListener('click', () => {
+  Sfx.ui();
+  if (pendingRival) {
+    save.seenTutorial = true;
+    saveGame(save);
+    const r = pendingRival;
+    pendingRival = null;
+    launch(r);
+  } else {
+    show(helpReturn);
+  }
+});
+
+document.querySelectorAll('[data-back]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    Sfx.ui();
+    updateTitle();
+    renderLadder();
+    show(btn.dataset.back);
+  });
+});
+
+$('btn-pause').addEventListener('click', () => {
+  if (!match) return;
+  Sfx.ui();
+  match.paused = true;
+  show('scr-pause');
+});
+
+$('btn-resume').addEventListener('click', () => {
+  Sfx.ui();
+  if (match) match.paused = false;
+  hideScreens();
+});
+
+$('btn-forfeit').addEventListener('click', () => {
+  Sfx.ui();
+  match = null;
+  document.body.classList.remove('in-match');
+  renderLadder();
+  show('scr-ladder');
+});
+
+$('btn-res-again').addEventListener('click', () => {
+  Sfx.ui();
+  if (currentRival) launch(currentRival);
+});
+
+$('btn-res-armory').addEventListener('click', () => {
+  Sfx.ui();
+  armoryReturn = 'scr-ladder';
+  renderArmory();
+  show('scr-armory');
+});
+
+$('btn-res-ladder').addEventListener('click', () => {
+  Sfx.ui();
+  renderLadder();
+  show('scr-ladder');
+});
+
+$('btn-champ-keep').addEventListener('click', () => {
+  Sfx.ui();
+  renderLadder();
+  show('scr-ladder');
+});
+
+$('btn-champ-reset').addEventListener('click', () => {
+  Sfx.ui();
+  const muted = save.muted;
+  save = emptySave();
+  save.seenTutorial = true;
+  save.muted = muted;
+  saveGame(save);
+  updateTitle();
+  show('scr-title');
+});
+
+$('btn-sound').addEventListener('click', () => {
+  save.muted = !save.muted;
+  setMuted(save.muted);
+  $('btn-sound').style.opacity = save.muted ? '0.45' : '1';
+  saveGame(save);
+  if (!save.muted) {
+    unlock();
+    Sfx.ui();
+  }
+});
+
+/* ------------------------------------------------------ install & offline */
+
+const installBtn = $('btn-install');
+let installPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  installPrompt = e;
+  if (installBtn) installBtn.hidden = false;
+});
+
+window.addEventListener('appinstalled', () => {
+  installPrompt = null;
+  if (installBtn) installBtn.hidden = true;
+});
+
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (!installPrompt) return;
+    Sfx.ui();
+    installPrompt.prompt();
+    try {
+      await installPrompt.userChoice;
+    } catch {
+      /* dismissed */
+    }
+    installPrompt = null;
+    installBtn.hidden = true;
+  });
+}
+
+// iOS has no install prompt: point at Share -> Add to Home Screen instead.
+const installed =
+  (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches) ||
+  window.navigator.standalone === true;
+if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !installed) {
+  const hint = $('install-hint');
+  if (hint) hint.hidden = false;
+}
+
+function registerWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  if (!/^https?:$/.test(location.protocol)) return;
+  navigator.serviceWorker.register('./sw.js').catch(() => {
+    /* offline support is a bonus; never block the game on it */
+  });
+}
+
+if (document.readyState === 'complete') registerWorker();
+else window.addEventListener('load', registerWorker, { once: true });
+
+/* ---------------------------------------------------------------- boot */
+
+setMuted(!!save.muted);
+$('btn-sound').style.opacity = save.muted ? '0.45' : '1';
+resize();
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 140));
+if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
+updateTitle();
+requestAnimationFrame(loop);
