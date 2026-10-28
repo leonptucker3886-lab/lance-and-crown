@@ -201,7 +201,10 @@ body.in-match #hud { opacity: 1; }
 
 /* --------------------------------------------------------------- screens */
 
-#screens { position: absolute; inset: 0; }
+/* Full-screen layer, but it must never swallow taps meant for the canvas:
+   hit-testing follows the box, not the visible background, so without this the
+   (transparent) screens layer eats every pointerdown during a tilt. */
+#screens { position: absolute; inset: 0; pointer-events: none; }
 
 .screen {
   position: absolute;
@@ -214,7 +217,7 @@ body.in-match #hud { opacity: 1; }
   -webkit-overflow-scrolling: touch;
   animation: fade 0.22s ease;
 }
-.screen.active { display: flex; }
+.screen.active { display: flex; pointer-events: auto; }
 
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 
