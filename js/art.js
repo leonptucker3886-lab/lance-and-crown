@@ -238,18 +238,31 @@ export function drawArena(ctx, { W, H, t, scroll, groundY }) {
   ctx.restore();
 
   // ---- ground
-  const gg = ctx.createLinearGradient(0, hz, 0, H);
-  gg.addColorStop(0, '#3a2620');
-  gg.addColorStop(0.35, '#2b1b18');
-  gg.addColorStop(1, '#150e0d');
+  // These three fills cover most of the screen and never change, so build the
+  // gradients once per layout instead of allocating a new one every frame.
+  if (!cache.ground) {
+    const g1 = ctx.createLinearGradient(0, hz, 0, H);
+    g1.addColorStop(0, '#3a2620');
+    g1.addColorStop(0.35, '#2b1b18');
+    g1.addColorStop(1, '#150e0d');
+
+    const g2 = ctx.createLinearGradient(0, groundY - H * 0.02, 0, H);
+    g2.addColorStop(0, 'rgba(150,104,66,0.42)');
+    g2.addColorStop(0.45, 'rgba(112,74,48,0.22)');
+    g2.addColorStop(1, 'rgba(60,38,28,0)');
+
+    const g3 = ctx.createRadialGradient(W * 0.5, groundY, H * 0.12, W * 0.5, groundY, H * 0.92);
+    g3.addColorStop(0, 'rgba(0,0,0,0)');
+    g3.addColorStop(0.72, 'rgba(0,0,0,0.18)');
+    g3.addColorStop(1, 'rgba(0,0,0,0.62)');
+
+    cache.ground = { gg: g1, tg: g2, vg: g3 };
+  }
+  const { gg, tg, vg } = cache.ground;
   ctx.fillStyle = gg;
   ctx.fillRect(0, hz, W, H - hz);
 
   // sand track band
-  const tg = ctx.createLinearGradient(0, groundY - H * 0.02, 0, H);
-  tg.addColorStop(0, 'rgba(150,104,66,0.42)');
-  tg.addColorStop(0.45, 'rgba(112,74,48,0.22)');
-  tg.addColorStop(1, 'rgba(60,38,28,0)');
   ctx.fillStyle = tg;
   ctx.fillRect(0, groundY - H * 0.02, W, H - groundY);
 
@@ -273,10 +286,6 @@ export function drawArena(ctx, { W, H, t, scroll, groundY }) {
   ctx.restore();
 
   // horizon shadow so the crowd reads against the sky
-  const vg = ctx.createRadialGradient(W * 0.5, groundY, H * 0.12, W * 0.5, groundY, H * 0.92);
-  vg.addColorStop(0, 'rgba(0,0,0,0)');
-  vg.addColorStop(0.72, 'rgba(0,0,0,0.18)');
-  vg.addColorStop(1, 'rgba(0,0,0,0.62)');
   ctx.fillStyle = vg;
   ctx.fillRect(0, 0, W, H);
 }
@@ -286,16 +295,17 @@ export function drawCrowdCheer(ctx, { W, H, t, power }) {
   const baseY = H * 0.5 + H * 0.055;
   ctx.save();
   ctx.globalAlpha = Math.min(1, power);
+  ctx.fillStyle = '#1b1226';
+  ctx.beginPath(); // one path, one fill: ~130 arcs as separate draws was a stall
   for (let row = 0; row < 3; row++) {
     const y = baseY + row * H * 0.017;
     for (let x = 0; x < W; x += 9) {
       const bounce = Math.abs(Math.sin(t * 6 + x * 0.11 + row)) * 5 * power;
-      ctx.fillStyle = '#1b1226';
-      ctx.beginPath();
+      ctx.moveTo(x + (x % 7) + 3.6, y - bounce);
       ctx.arc(x + (x % 7), y - bounce, 3.6, 0, TAU);
-      ctx.fill();
     }
   }
+  ctx.fill();
   ctx.restore();
 }
 
