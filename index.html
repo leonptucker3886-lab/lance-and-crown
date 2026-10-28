@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+<meta name="theme-color" content="#0b0910" />
+<meta name="description" content="Lance &amp; Crown — a mobile-first jousting duel. Gallop, aim and strike your way to the crown." />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png" />
+<meta name="application-name" content="Lance &amp; Crown" />
+<meta name="apple-mobile-web-app-title" content="Lance &amp; Crown" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="mobile-web-app-capable" content="yes" />
+<title>Lance &amp; Crown — Jousting Duel</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="app">
+  <canvas id="stage" aria-label="Jousting arena"></canvas>
+
+  <!-- ---------------------------------------------------------- in-match HUD -->
+  <div id="hud">
+    <div class="hud-top">
+      <div class="hud-side">
+        <div class="who">YOU</div>
+        <div class="hpbar"><i id="hp-you"></i></div>
+        <div class="plates" id="plates-you">
+          <i data-z="helm"></i><i data-z="chest"></i><i data-z="shield"></i>
+        </div>
+      </div>
+      <div class="passchip" id="passnum">PASS 1</div>
+      <div class="hud-side right">
+        <div class="who" id="foe-who">RIVAL</div>
+        <div class="hpbar foe"><i id="hp-foe"></i></div>
+        <div class="plates foe" id="plates-foe">
+          <i data-z="helm"></i><i data-z="chest"></i><i data-z="shield"></i>
+        </div>
+      </div>
+    </div>
+    <button id="btn-pause" class="chip-btn" aria-label="Pause">&#10074;&#10074;</button>
+    <div id="callout"><div class="c-main" id="callout-main"></div><div class="c-sub" id="callout-sub"></div></div>
+    <div id="toast"></div>
+  </div>
+
+  <!-- ------------------------------------------------------------- screens -->
+  <div id="screens">
+
+    <section id="scr-title" class="screen active title-screen">
+      <div class="crest" aria-hidden="true">
+        <svg viewBox="0 0 64 74" width="64" height="74">
+          <path d="M32 2 60 10v26c0 18-12 30-28 36C16 66 4 54 4 36V10L32 2Z" fill="#8f2233" stroke="#e8c96a" stroke-width="3" />
+          <path d="M32 16v30M20 30h24" stroke="#e8c96a" stroke-width="5" stroke-linecap="round" />
+        </svg>
+      </div>
+      <h1 class="game-title">Lance<span>&amp;</span>Crown</h1>
+      <p class="tagline">Six rivals. One tilt-yard.<br />Take the crown or eat the sand.</p>
+      <div class="stat-strip">
+        <div><span id="title-gold">0</span><small>gold</small></div>
+        <div><span id="title-wins">0</span><small>rivals down</small></div>
+        <div><span id="title-level">0</span><small>gear lvl</small></div>
+      </div>
+      <div class="stack">
+        <button class="btn primary" id="btn-play">Enter the lists</button>
+        <button class="btn" id="btn-armory">The armory</button>
+        <button class="btn ghost" id="btn-help">How to ride</button>
+        <button class="btn" id="btn-install" hidden>Install the game</button>
+      </div>
+      <p class="install-hint" id="install-hint" hidden>Tap <b>Share</b>, then <b>Add to Home Screen</b> for full-screen play.</p>
+      <div class="title-foot">
+        <button class="chip-btn sound" id="btn-sound" aria-label="Toggle sound">&#9834;</button>
+        <span class="fine">Three taps a pass. No downloads, no ads.</span>
+      </div>
+    </section>
+
+    <section id="scr-ladder" class="screen">
+      <header class="screen-head">
+        <button class="back" data-back="scr-title" aria-label="Back">&#8249;</button>
+        <h2>The Lists</h2>
+        <div class="coin"><span id="ladder-gold">0</span></div>
+      </header>
+      <p class="lede">Work up the ladder. Each rival rides harder and hits heavier.</p>
+      <div id="ladder-list" class="ladder"></div>
+      <div class="screen-foot">
+        <button class="btn" id="btn-ladder-armory">The armory</button>
+      </div>
+    </section>
+
+    <section id="scr-armory" class="screen">
+      <header class="screen-head">
+        <button class="back" data-back="scr-ladder" aria-label="Back">&#8249;</button>
+        <h2>The Armory</h2>
+        <div class="coin"><span id="armory-gold">0</span></div>
+      </header>
+      <p class="lede">Spend your purse. Steel wins tournaments.</p>
+      <div id="armory-list" class="armory"></div>
+      <div class="screen-foot">
+        <button class="btn primary" id="btn-armory-back">Back to the lists</button>
+      </div>
+    </section>
+
+    <section id="scr-help" class="screen">
+      <header class="screen-head">
+        <button class="back" id="btn-help-back" aria-label="Back">&#8249;</button>
+        <h2>How to Ride</h2>
+      </header>
+      <div class="steps">
+        <div class="step">
+          <div class="num">1</div>
+          <div><h3>Gallop</h3><p>Tap when the needle is inside the gold band. A full gallop adds real force to your blow.</p></div>
+        </div>
+        <div class="step">
+          <div class="num">2</div>
+          <div><h3>Aim</h3><p>Tap to lock the reticle on a plate. <b>Helm</b> hits hardest, <b>shield</b> barely scratches &mdash; but a shattered shield costs them their guard.</p></div>
+        </div>
+        <div class="step">
+          <div class="num">3</div>
+          <div><h3>Strike</h3><p>Tap again in the gold window. A perfect strike nearly doubles your damage.</p></div>
+        </div>
+      </div>
+      <div class="screen-foot">
+        <button class="btn primary" id="btn-help-start">Ride out</button>
+      </div>
+    </section>
+
+    <section id="scr-result" class="screen">
+      <div class="card result-card">
+        <div class="result-kicker" id="res-kicker">PASS</div>
+        <h2 id="res-title">Victory</h2>
+        <p id="res-sub" class="lede center">You unhorsed them.</p>
+        <div class="result-stats">
+          <div><span id="res-gold">+0</span><small>purse</small></div>
+          <div><span id="res-passes">0</span><small>passes</small></div>
+          <div><span id="res-hp">0</span><small>stamina left</small></div>
+        </div>
+        <div class="stack">
+          <button class="btn primary" id="btn-res-again">Ride again</button>
+          <button class="btn" id="btn-res-armory">Spend the purse</button>
+          <button class="btn ghost" id="btn-res-ladder">Back to the lists</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="scr-champion" class="screen">
+      <div class="crown" aria-hidden="true">&#9812;</div>
+      <h2 class="champ-title">The Crown is Yours</h2>
+      <p class="lede center">Mordred Cain is in the dirt, the Black Banner is down, and every knight in the realm has heard your name.</p>
+      <div class="stat-strip">
+        <div><span id="champ-gold">0</span><small>gold earned</small></div>
+        <div><span id="champ-runs">0</span><small>passes ridden</small></div>
+      </div>
+      <div class="stack">
+        <button class="btn primary" id="btn-champ-keep">Keep riding</button>
+        <button class="btn ghost" id="btn-champ-reset">Start a new house</button>
+      </div>
+    </section>
+
+    <section id="scr-pause" class="screen">
+      <div class="card result-card small">
+        <h2>Halted</h2>
+        <p class="lede center">The marshal calls a pause.</p>
+        <div class="stack">
+          <button class="btn primary" id="btn-resume">Resume the tilt</button>
+          <button class="btn ghost" id="btn-forfeit">Forfeit the pass</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
