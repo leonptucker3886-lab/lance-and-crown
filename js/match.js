@@ -23,6 +23,11 @@ const SWEEP = 0.78; // seconds for one full pass of the gallop needle
 const STRIKE_SWEEP = 0.72;
 const GOOD_BAND = 0.22;
 
+const GALLOP_TIME = 2.2; // you get this long to read the needle before it commits
+const AIM_TIME = 2.0; // ... and this long to line the lance up. Waiting is a loss.
+const STRIKE_TIME = 1.5;
+const CHARGE_TIME = 2.3; // seconds of open ground between the riders and the hit
+
 export class Match {
   constructor({ rival, stats, foeStats, ui, onFinish }) {
     this.rival = rival;
@@ -195,7 +200,10 @@ export class Match {
     this.aimZone = band.i;
     const mid = (band.a + band.b) / 2;
     const half = (band.b - band.a) / 2;
-    this.aimQ = 1 + (1 - Math.abs(r - mid) / half) * 0.14;
+    // Dwelling bleeds the accuracy bonus away, so a late lock still lands but
+    // no longer lands clean.
+    const patience = clamp(1 - this.phaseT / (AIM_TIME * 1.6), 0.2, 1);
+    this.aimQ = 1 + (1 - Math.abs(r - mid) / half) * 0.14 * patience;
     Sfx.lock();
     vibrate(12);
     this.ui.prompt('AIM LOCKED', ZONES[this.aimZone].label + ' \u00b7 ' + ZONES[this.aimZone].note, 'gold');
@@ -362,9 +370,11 @@ export class Match {
     const contact = this.reach * 0.97;
 
     const pos = {
-      ready: { you: -W * 0.14, foe: W * 1.14, zm: 0.86, ys: 1, fs: 1, yc: 0.12, fc: 0.12 },
-      gallop: { you: 0, foe: 0, zm: 0.95, ys: 1, fs: 1, yc: 0.55, fc: 0.55 },
-      aim: { you: W * 0.0, foe: W * 0.42, zm: 1.62, ys: 0.72, fs: 1.25, yc: 0.7, fc: 0.82 },
+      // Both riders stay in frame and well apart: an earlier framing put them
+      // almost at lance range before the charge had read at all.
+      ready: { you: -W * 0.06, foe: W * 1.06, zm: 0.72, ys: 1, fs: 1, yc: 0.12, fc: 0.12 },
+      gallop: { you: 0, foe: 0, zm: 1.0, ys: 1, fs: 1, yc: 0.55, fc: 0.55 },
+      aim: { you: W * 0.02, foe: W * 0.6, zm: 1.32, ys: 0.74, fs: 1.2, yc: 0.7, fc: 0.82 },
       impact: { you: 0, foe: 0, zm: 0.98, ys: 1, fs: 1, yc: 1, fc: 1 },
       resolve: { you: 0, foe: 0, zm: 1.02, ys: 1, fs: 1, yc: 1, fc: 1 },
     }[this.phase] || { you: 0, foe: 0, zm: 1, ys: 1, fs: 1, yc: 1, fc: 1 };
@@ -372,9 +382,11 @@ export class Match {
     let youX;
     let foeX;
     if (this.phase === 'gallop') {
-      const g = easeOut(clamp(this.phaseT / 1.15, 0, 1));
-      youX = lerp(-W * 0.14, W * 0.5 - contact, g);
-      foeX = lerp(W * 1.14, W * 0.5 + contact, g);
+      // Accelerating rather than easing out, so they arrive at the barrier at
+      // speed instead of drifting into contact.
+      const g = clamp(this.phaseT / CHARGE_TIME, 0, 1) ** 2;
+      youX = lerp(-W * 0.06, W * 0.5 - contact, g);
+      foeX = lerp(W * 1.06, W * 0.5 + contact, g);
     } else if (this.phase === 'aim') {
       youX = pos.you;
       foeX = pos.foe;
@@ -431,20 +443,22 @@ export class Match {
         this.needle = 0;
         this.needleDir = 1;
       }
-      if (this.phaseT > 3.1) this.lockGallop();
+      if (this.phaseT > GALLOP_TIME) this.lockGallop();
     }
     if (this.phase === 'gallop' && this.locked && this.phaseT > 0.42) {
       this.phase = 'aim';
       this.phaseT = 0;
       this.locked = false;
       this.zoomTarget = 1.0;
-      this.ui.prompt('AIM', 'Tap to lock your lance on a plate');
+      this.ui.prompt('AIM', 'Lock a plate \u2014 the window is closing');
       Sfx.whoosh();
     }
 
     if (this.phase === 'aim') {
       if (!this.locked) {
-        this.reticle += this.reticleDir * dt * 0.85;
+        // The sweep winds up the longer you leave it, so holding out for the
+        // perfect band gets harder instead of easier.
+        this.reticle += this.reticleDir * dt * (0.85 + this.phaseT * 0.6);
         if (this.reticle > 1) {
           this.reticle = 1;
           this.reticleDir = -1;
@@ -453,7 +467,7 @@ export class Match {
           this.reticle = 0;
           this.reticleDir = 1;
         }
-        if (this.phaseT > 4.2) this.lockAim();
+        if (this.phaseT > AIM_TIME) this.lockAim();
       } else if (this.phaseT > 0.45) {
         this.phase = 'impact';
         this.phaseT = 0;
@@ -477,7 +491,7 @@ export class Match {
           this.strikePos = 0;
           this.strikeDir = 1;
         }
-        if (this.phaseT > 2.1) {
+        if (this.phaseT > STRIKE_TIME) {
           this.strikeQ = 'poor';
           this.resolve();
         }
@@ -757,6 +771,17 @@ export class Match {
     ctx.strokeStyle = 'rgba(232,201,106,0.35)';
     ctx.lineWidth = 1.4;
     ctx.stroke();
+
+    // clock on the aim: it used to be possible to wait out the sweep forever
+    if (!this.locked) {
+      const left = clamp(1 - this.phaseT / AIM_TIME, 0, 1);
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      this.roundRect(ctx, railX - railW / 2 - 6, top - 28, railW + 12, 7, 3.5);
+      ctx.fill();
+      ctx.fillStyle = left > 0.35 ? '#e8c96a' : '#ff6a52';
+      this.roundRect(ctx, railX - railW / 2 - 6, top - 28, (railW + 12) * left, 7, 3.5);
+      ctx.fill();
+    }
 
     for (const b of bands) {
       const by = top + h * b.a;
