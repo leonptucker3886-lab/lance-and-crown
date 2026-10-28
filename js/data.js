@@ -161,7 +161,7 @@ export const RIVALS = [
   },
   {
     id: 'delacroix',
-    name: 'Dame Alienor Delacroix',
+    name: 'Dame Aliénor Delacroix',
     house: 'House Delacroix',
     hp: 162,
     lance: 25,
