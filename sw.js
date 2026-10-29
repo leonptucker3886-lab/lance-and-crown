@@ -1,7 +1,6 @@
 // Service worker: precache the whole game so it launches offline, including
-// from a home-screen icon. Navigations are network-first so a deploy lands on
-// the next load; assets are stale-while-revalidate so nothing waits on a phone
-// connection just to paint.
+// from a home-screen icon. Everything is network-first while online, so a
+// deploy is picked up on the next load, and falls back to the cache offline.
 
 const VERSION = 'joustline-v3';
 
@@ -74,7 +73,10 @@ self.addEventListener('fetch', (event) => {
         }
       }
 
-      // Assets: serve the cached bytes instantly, refresh in the background.
+      // Assets are stale-while-revalidate: serve the cached bytes instantly so
+      // the game never waits on a mobile connection just to paint, then refresh
+      // the entry in the background so the next load is current. Network-first
+      // on assets is what made the game feel slow again.
       const cached = await cache.match(req, { ignoreSearch: true });
       const network = fetch(req)
         .then((res) => {
