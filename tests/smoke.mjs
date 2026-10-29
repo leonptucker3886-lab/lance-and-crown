@@ -1,6 +1,5 @@
 // End-to-end smoke test in jsdom with a stubbed 2D context.
-// Verifies boot, the prologue, a rival's story panels, a full tilt, the armory
-// purchase path, retinue choices and heraldry gating.
+// Verifies boot, the cold open, navigation, tutorial, a full tilt, and the armory.
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
@@ -46,6 +45,7 @@ globalThis.requestAnimationFrame = (cb) => {
   rafQueue.push(cb);
   return rafQueue.length;
 };
+globalThis.cancelAnimationFrame = () => {};
 
 function step(ms = 16) {
   now += ms;
@@ -70,6 +70,12 @@ window.localStorage.setItem(
 await import('../js/main.js');
 step(16);
 
+/* ---- the cold open plays first, and a tap gets out of it ---- */
+assert.equal($('intro').hidden, false, 'the branded cold open plays before anything else');
+assert.equal(active(), 'scr-title', 'the title is assembled underneath it');
+$('intro').dispatchEvent(new window.Event('pointerdown'));
+assert.equal($('intro').hidden, true, 'a tap skips the cold open');
+
 const dismissStory = () => {
   let n = 0;
   while (active() === 'scr-story' && n < 16) {
@@ -91,7 +97,7 @@ assert.equal(rows.length, 6, 'six rivals on the ladder');
 assert.equal(rows[1].disabled, true, 'second rival starts locked');
 
 rows[0].click();
-assert.equal(active(), 'scr-story', 'a first meeting opens the rival story');
+assert.equal(active(), 'scr-story', 'a first meeting opens the rival\u2019s story');
 
 dismissStory();
 assert.equal(active(), 'scr-help', 'first run shows the tutorial');
