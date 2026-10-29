@@ -366,6 +366,27 @@ body.in-match #hud { opacity: 1; }
   line-height: 1.55;
   color: rgba(232, 216, 190, 0.82);
 }
+
+/* ------------------------------------------------------- work the knot */
+.knot-card { max-width: 420px; }
+.knot-track {
+  height: 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(232, 201, 106, 0.35);
+  background: rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  margin: 4px 0 16px;
+}
+.knot-track i {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: 7px;
+  background: linear-gradient(90deg, #cfa845, #f2da96);
+  transition: width 0.08s linear;
+}
+#btn-knot { min-height: 62px; font-size: 19px; }
+#scr-knot .story-progress { display: block; margin-top: 12px; text-align: center; }
 .install-hint {
   margin: 0;
   max-width: 400px;
