@@ -15,10 +15,20 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <title>JoustLine: The First — Jousting Duel</title>
 <link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/intro.css" />
 </head>
 <body>
 <div id="app">
   <canvas id="stage" aria-label="Jousting arena"></canvas>
+
+  <!-- ----------------------------------------------------------- cold open -->
+  <div id="intro" hidden>
+    <div class="i-present">LeonLink<b>presents</b></div>
+    <canvas id="intro-crest" class="i-crest" aria-hidden="true"></canvas>
+    <div class="i-title">JoustLine<span>The First</span></div>
+    <div class="i-shout">Winning!</div>
+    <div class="i-skip">tap to skip</div>
+  </div>
 
   <!-- ---------------------------------------------------------- in-match HUD -->
   <div id="hud">

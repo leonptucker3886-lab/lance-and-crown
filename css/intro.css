@@ -1,0 +1,119 @@
+/* ------------------------------------------------------------ cold open */
+
+/* Brand, arms, title, then Bart's word. Six and a half seconds, skippable. */
+#intro {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px, 3.6vh, 28px);
+  padding: 0 24px;
+  overflow: hidden;
+  text-align: center;
+  background: radial-gradient(120% 82% at 50% 42%, #1e1424 0%, #0b0812 58%, #050409 100%);
+}
+
+.i-present {
+  font-size: clamp(10px, 2.9vw, 13px);
+  letter-spacing: 0.46em;
+  text-transform: uppercase;
+  color: rgba(232, 201, 106, 0.85);
+  opacity: 0;
+  animation: introPresent 2.9s ease 0.1s both;
+}
+.i-present b {
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: #fff3d4;
+  margin-left: 0.35em;
+}
+
+.i-crest {
+  display: block;
+  opacity: 0;
+  animation: introCrest 4.9s cubic-bezier(0.16, 0.8, 0.24, 1) 0.8s both;
+  filter: drop-shadow(0 16px 32px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 28px rgba(232, 201, 106, 0.22));
+}
+
+.i-title {
+  font-family: var(--serif);
+  font-size: clamp(26px, 9vw, 46px);
+  line-height: 1;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  background: linear-gradient(180deg, #fff4d8 8%, var(--gold) 58%, var(--gold-deep) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  opacity: 0;
+  animation: introTitle 3.6s ease 2.8s both;
+}
+.i-title span {
+  display: block;
+  margin-top: 7px;
+  font-size: 0.4em;
+  letter-spacing: 0.36em;
+  color: var(--ink-dim);
+  -webkit-text-fill-color: var(--ink-dim);
+}
+
+.i-shout {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--serif);
+  font-size: clamp(40px, 15vw, 78px);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #fff6e2;
+  text-shadow: 0 0 36px rgba(232, 201, 106, 0.55), 0 6px 0 rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  animation: introShout 1.6s cubic-bezier(0.18, 0.9, 0.2, 1) 4.85s both;
+}
+
+.i-skip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--safe-b) + 16px);
+  font-size: 9.5px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(199, 183, 156, 0.42);
+  opacity: 0;
+  animation: introSkip 0.9s ease 1.3s both;
+}
+
+body.intro-live #screens { opacity: 0; }
+
+@keyframes introPresent {
+  0% { opacity: 0; transform: translateY(10px); letter-spacing: 0.66em; }
+  18% { opacity: 1; transform: translateY(0); letter-spacing: 0.46em; }
+  74% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes introCrest {
+  0% { opacity: 0; transform: scale(0.66) translateY(10px); }
+  14% { opacity: 1; }
+  70% { opacity: 1; transform: scale(1.02) translateY(0); }
+  100% { opacity: 0.92; transform: scale(1) translateY(-4px); }
+}
+@keyframes introTitle {
+  0% { opacity: 0; transform: translateY(16px); }
+  22% { opacity: 1; transform: translateY(0); }
+  86% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes introShout {
+  0% { opacity: 0; transform: translateY(-50%) scale(0.6) rotate(-5deg); }
+  30% { opacity: 1; transform: translateY(-50%) scale(1.08) rotate(2deg); }
+  50% { transform: translateY(-50%) scale(1) rotate(0deg); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-50%) scale(1.03); }
+}
+@keyframes introSkip { from { opacity: 0; } to { opacity: 1; } }
