@@ -1,20 +1,17 @@
-# Deploy JoustLine to Vercel on every push to main.
+# Test every push to main, then deploy it to Vercel.
 #
-# Why this exists: the Vercel project `lance-and-crown` is not linked to this
-# repository, so Vercel never receives a push event and never builds on its own
-# (the repo's Deployments API has stayed empty through every push). This closes
-# that gap with the CLI, which needs no Git integration.
+# Why this exists: the Vercel project `lance-and-crown` has no Git link, so
+# Vercel never receives a push event and never builds on its own (the repo's
+# Deployments API stayed empty through every push). This closes that gap with
+# the CLI, which needs no Git integration.
 #
 # One-time setup — add a repository secret named VERCEL_TOKEN:
 #   Vercel dashboard -> Account Settings -> Tokens -> Create Token
 #   GitHub repo -> Settings -> Secrets and variables -> Actions -> New secret
 #
-# The project and org ids below are public identifiers, not credentials, so
-# they live here rather than in a secret. Until VERCEL_TOKEN exists this
-# workflow runs the suites and skips the deploy step instead of failing.
-#
-# Note: `secrets` is not an allowed context inside an `if:` expression, so the
-# token test is evaluated in job-level `env` and compared there.
+# The org and project ids below are public identifiers, not credentials.
+# Deliberately no `if:` expressions: the token is checked in the shell, so an
+# unset secret means "tested, not deployed" rather than a failed workflow.
 
 name: Deploy
 
@@ -33,8 +30,6 @@ jobs:
     env:
       VERCEL_ORG_ID: team_H9UMORlo1bM8ah2vzLl75Ujs
       VERCEL_PROJECT_ID: prj_s8QCEhICBZgLrc5N6nzC5vU5dZ8l
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      HAS_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -42,20 +37,21 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Run the suites
+      - name: Test, then deploy when a token is configured
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
+          set -e
           # No lockfile is committed, so `npm ci` would fail here.
           npm install --no-audit --no-fund
           node tests/balance.mjs
           node tests/pwa.mjs
           node tests/smoke.mjs
 
-      - name: Deploy to production
-        if: env.HAS_VERCEL_TOKEN == 'true'
-        run: npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
+          if [ -z "${VERCEL_TOKEN}" ]; then
+            echo "VERCEL_TOKEN is not set, so this push was tested but not deployed."
+            echo "Add it under Settings -> Secrets and variables -> Actions."
+            exit 0
+          fi
 
-      - name: Note the missing token
-        if: env.HAS_VERCEL_TOKEN != 'true'
-        run: |
-          echo "VERCEL_TOKEN is not set, so this push was tested but not deployed."
-          echo "Add it under Settings -> Secrets and variables -> Actions."
+          npx --yes vercel@latest deploy --prod --yes --token "${VERCEL_TOKEN}"
