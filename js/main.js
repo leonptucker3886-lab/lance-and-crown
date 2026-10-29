@@ -30,7 +30,7 @@ import {
   goldEarn,
   tokenEarn,
 } from './data.js';
-import { Sfx, unlock, setMuted } from './audio.js';
+import { Sfx, unlock, setMuted, vibrate } from './audio.js';
 
 const $ = (id) => document.getElementById(id);
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI'];
@@ -383,17 +383,84 @@ function showStory(panels, done) {
 /** First meeting with a rival gets its story panels; later meetings go straight in. */
 function beginRival(rival) {
   save.story = save.story || {};
+  const enter = () => {
+    show('scr-ladder');
+    maybeKnot(rival, () => startMatch(rival));
+  };
   const chapter = STORY[rival.id];
   if (chapter && !save.story[rival.id]) {
     save.story[rival.id] = true;
     saveGame(save);
-    showStory(chapter.intro, () => {
-      show('scr-ladder');
-      startMatch(rival);
-    });
+    showStory(chapter.intro, enter);
     return;
   }
-  startMatch(rival);
+  enter();
+}
+
+/* ------------------------------------------------------- work the knot */
+
+// The Bart-horse: his leg seizes at the worst moment, and the squire's job was
+// always to rub the knot out before he topples off Tancrede.
+let knotHits = 0;
+let knotTimer = null;
+let knotDeadline = 0;
+let knotAfter = null;
+const KNOT_TAPS = 10;
+const KNOT_MS = 3500;
+
+function maybeKnot(rival, next) {
+  // Only before Bart's fight, and only once: after that he "stretches first".
+  if (rival.id !== 'bart' || save.knotDone) {
+    next();
+    return;
+  }
+  knotHits = 0;
+  knotAfter = next;
+  $('knot-fill').style.width = '0%';
+  $('knot-sub').textContent =
+    'His leg has seized mid-toast. Ten quick rubs before he topples off Tancrede.';
+  $('knot-clock').textContent = '3.5s';
+  show('scr-knot');
+  knotDeadline = performance.now() + KNOT_MS;
+  clearInterval(knotTimer);
+  knotTimer = setInterval(() => {
+    const left = knotDeadline - performance.now();
+    $('knot-clock').textContent = left > 0 ? (left / 1000).toFixed(1) + 's' : '0.0s';
+    if (left <= 0) endKnot(false);
+  }, 100);
+}
+
+function rubKnot() {
+  if (!knotTimer) return;
+  Sfx.tap();
+  vibrate(8);
+  knotHits += 1;
+  $('knot-fill').style.width = Math.min(100, (knotHits / KNOT_TAPS) * 100) + '%';
+  if (knotHits >= KNOT_TAPS) endKnot(true);
+}
+
+function endKnot(worked) {
+  clearInterval(knotTimer);
+  knotTimer = null;
+  if (worked) {
+    save.knotDone = true;
+    save.tokens += 1;
+    saveGame(save);
+    Sfx.perfect();
+    updateTitle();
+    $('knot-sub').textContent =
+      'The knot gives. Bart toasts the ceiling, credits himself, and climbs onto a horse he should not be on.';
+    $('knot-clock').textContent = '+1 Glow';
+  } else {
+    $('knot-sub').textContent =
+      'He rides it out anyway. WINNING! The court physician calls it a most unusual horse-cramp.';
+    $('knot-clock').textContent = '';
+  }
+  const go = knotAfter;
+  knotAfter = null;
+  setTimeout(() => {
+    if (go) go();
+  }, 1500);
 }
 
 /* --------------------------------------------------------------- match */
@@ -513,6 +580,7 @@ function renderIdle(t) {
 }
 
 let last = performance.now();
+let idleAcc = 0;
 function loop(now) {
   // Clamp high enough that a janky frame rate still advances game time at
   // roughly real speed: at 0.05 a 12fps phone ran the whole tilt in slow motion.
@@ -526,8 +594,16 @@ function loop(now) {
     m.render(ctx);
     if (match === m) syncHUD();
   } else {
-    idleT += dt;
-    renderIdle(idleT);
+    // Menus sit over a mostly still scene. Painting it at full rate burns the
+    // frame budget on the layer the player is not touching, which is what makes
+    // taps feel late on a phone; 20fps behind a screen looks identical.
+    idleAcc += dt;
+    const menuOpen = !!document.querySelector('.screen.active');
+    if (!menuOpen || idleAcc >= 0.05) {
+      idleT += idleAcc;
+      idleAcc = 0;
+      renderIdle(idleT);
+    }
   }
   requestAnimationFrame(loop);
 }
@@ -599,6 +675,8 @@ $('btn-retinue-done').addEventListener('click', () => {
   updateTitle();
   show('scr-title');
 });
+
+$('btn-knot').addEventListener('click', rubKnot);
 
 $('btn-story-next').addEventListener('click', () => {
   Sfx.ui();
