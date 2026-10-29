@@ -1,0 +1,9 @@
+node_modules
+tests
+tools
+package.json
+package-lock.json
+README.md
+server.log
+.server.pid
+.gitignore
