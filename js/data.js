@@ -53,35 +53,35 @@ export const GALLOP_LABEL = [
 /* ------------------------------------------------------------- the retinue */
 
 /**
- * Who you are. Each knight leans the stats one way; the numbers are small on
- * purpose so the ladder balance (and tests/balance.mjs) still holds.
+ * Whose colours you carry. Each knight leans the stats one way; the numbers are
+ * small on purpose so the ladder balance (and tests/balance.mjs) still holds.
  */
 export const KNIGHTS = [
   {
-    id: 'ashby',
-    name: 'Sir Aldric Ashby',
-    house: 'House Ashby',
-    blurb: 'A steady hand on a steady horse. No tricks, no weaknesses.',
-    boon: 'Balanced',
-    mods: { lance: 1.04, maxHP: 1.02 },
+    id: 'bart',
+    name: 'Lord Bart Sheen',
+    house: 'House Sheen',
+    blurb: 'Wins by accident and takes the credit. Shouts \u201cWINNING!\u201d whether or not it is true.',
+    boon: '+8% purse, \u22126% stamina',
+    mods: { goldMul: 1.08, maxHP: 0.94 },
     pal: { horse: '#3f3230', horseDark: '#241b1a', cloth: '#8f2233', cloth2: '#e8c96a', plate: '#dfe5ec', plateDark: '#8d96a3', plume: '#f2d98a' },
   },
   {
-    id: 'pike',
-    name: 'Dame Rowena Pike',
-    house: 'The Pike Company',
-    blurb: 'Lives for the crash. Hits like a dropped portcullis, guards like a hinge.',
-    boon: '+12% lance, −10% stamina',
-    mods: { lance: 1.12, maxHP: 0.9 },
+    id: 'baron',
+    name: 'The Baron of Vaudrecourt',
+    house: 'Your cousin\u2019s household',
+    blurb: 'Sober, polished, generous in public. His colours come with a ledger attached.',
+    boon: '+10% lance, \u22124% stamina',
+    mods: { lance: 1.1, maxHP: 0.96 },
     pal: { horse: '#4a3a33', horseDark: '#2c211d', cloth: '#2f5aa8', cloth2: '#e6dcc0', plate: '#c8d3e0', plateDark: '#77839a', plume: '#dfe8ff' },
   },
   {
-    id: 'voss',
-    name: 'Sir Caelan Voss',
-    house: 'House Voss',
-    blurb: 'Wins on attrition. Lets you land the first blow, then outlasts you.',
-    boon: '+15% stamina, −5% lance',
-    mods: { lance: 0.95, maxHP: 1.15 },
+    id: 'bayard',
+    name: 'Sir Bayard',
+    house: 'Without fear and beyond reproach',
+    blurb: 'The one knight in France who does not need the purse. Rides clean, hits clean.',
+    boon: '+4% lance, +4% stamina',
+    mods: { lance: 1.04, maxHP: 1.04 },
     pal: { horse: '#3c3a30', horseDark: '#232118', cloth: '#2f7a4e', cloth2: '#e8c96a', plate: '#c2ccc8', plateDark: '#6f7a76', plume: '#f4e29a' },
   },
 ];
@@ -91,51 +91,51 @@ export const KNIGHTS = [
  * economic only — they never touch the damage maths.
  */
 export const SQUIRES = [
-  { id: 'wren', name: 'Wren', blurb: 'Quick hands with the barding straps.', perk: '+1 Glow per won tilt', tokens: 1, goldMul: 1 },
-  { id: 'tam', name: 'Tam', blurb: 'Haggles the purse men down to the last coin.', perk: '+12% purse', tokens: 0, goldMul: 1.12 },
-  { id: 'odo', name: 'Odo', blurb: 'Reads a rival\u2019s shoulder a half-beat early.', perk: 'wider perfect-strike window', tokens: 0, goldMul: 1, perfectBonus: 0.014 },
+  { id: 'gaspard', name: 'Old Gaspard', blurb: 'Runs the stable and the tutorial, and gets both slightly wrong.', perk: '+8% purse', tokens: 0, goldMul: 1.08 },
+  { id: 'isabeau', name: 'Isabeau de Loches', blurb: 'Rival squire turned ally. Knows every purse on the circuit.', perk: '+1 Glow per won tilt', tokens: 1, goldMul: 1 },
+  { id: 'anselme', name: 'Brother Anselme', blurb: 'Keeps the estate at Montresor earning while you are away.', perk: '+14% purse', tokens: 0, goldMul: 1.14 },
 ];
 
 /**
- * Every knight rides for someone. The first is waiting at the gate; the rest
- * have to be earned by putting rivals in the sand.
+ * Every knight rides for someone. The first is waiting at court; the rest have
+ * to be earned by putting rivals in the sand.
  */
 export const LADIES = [
   {
-    id: 'isolde',
-    name: 'Lady Isolde of Wex',
-    court: 'The Wex Marches',
-    blurb: 'Sends a ribbon and a cold, practical letter.',
+    id: 'claude',
+    name: 'Queen Claude',
+    court: 'The first court post',
+    blurb: 'Gives you a post and expects nothing loud in return.',
     boon: '+6% purse',
     unlock: 0,
     mods: { goldMul: 1.06 },
   },
   {
-    id: 'maren',
-    name: 'Lady Maren Voss',
-    court: 'House Voss',
-    blurb: 'Will not be seen with a knight who loses to farmers.',
-    boon: '+4% lance',
+    id: 'marguerite',
+    name: 'Marguerite de Navarre',
+    court: 'The king\u2019s sister',
+    blurb: 'A writer who opens the wit path with one question.',
+    boon: 'wider perfect strike',
     unlock: 1,
-    mods: { lance: 1.04 },
+    mods: { perfectBonus: 0.012 },
   },
   {
-    id: 'alienor',
-    name: 'Dame Aliénor\u2019s cousin, Ysolde',
-    court: 'House Delacroix',
-    blurb: 'Wears your colours only if they are worth wearing.',
-    boon: '+8% stamina',
+    id: 'diane',
+    name: 'Diane de Poitiers',
+    court: 'The court that outlives kings',
+    blurb: 'Wears your colours only when they are worth the silk.',
+    boon: '+6% lance',
     unlock: 3,
-    mods: { maxHP: 1.08 },
+    mods: { lance: 1.06 },
   },
   {
-    id: 'crown',
-    name: 'The Queen of the Lists',
-    court: 'The royal box',
-    blurb: 'Rides for no one. Rides for the crown itself.',
-    boon: '+10% lance, +10% pursuit',
+    id: 'catherine',
+    name: 'Catherine de\u2019 Medici',
+    court: 'A patient, dangerous ally',
+    blurb: 'Rides with nobody until the numbers are in her favour.',
+    boon: '+6% lance, +6% purse',
     unlock: 6,
-    mods: { lance: 1.1, goldMul: 1.1 },
+    mods: { lance: 1.06, goldMul: 1.06 },
   },
 ];
 
@@ -163,7 +163,7 @@ export const CHARGES = [
   { id: 'crown', name: 'Crown', note: 'only for champions', unlock: 6 },
 ];
 
-/** Horse armour, bought with Glow. Purely how you look — except tier 0 is free. */
+/** Horse armour, bought with Glow. Purely how you look — tier 0 is free. */
 export const BARDING = [
   { level: 0, name: 'Unbarded', cost: 0, blurb: 'Cloth caparison only.' },
   { level: 1, name: 'Peytral', cost: 2, blurb: 'Steel breastplate and a stitched border.' },
@@ -182,15 +182,15 @@ const NEUTRAL_MODS = { lance: 1, maxHP: 1, perfectBonus: 0, goldMul: 1, tokens: 
 const findById = (list, id, fallbackId) => list.find((x) => x.id === id) || list.find((x) => x.id === fallbackId) || list[0];
 
 export function knightOf(save) {
-  return findById(KNIGHTS, save && save.knight, 'ashby');
+  return findById(KNIGHTS, save && save.knight, 'bart');
 }
 
 export function squireOf(save) {
-  return findById(SQUIRES, save && save.squire, 'wren');
+  return findById(SQUIRES, save && save.squire, 'gaspard');
 }
 
 export function ladyOf(save) {
-  return findById(LADIES, save && save.lady, 'isolde');
+  return findById(LADIES, save && save.lady, 'claude');
 }
 
 /** Are you yet worthy of this lady's colours? */
@@ -338,69 +338,69 @@ export function heroPal(save) {
 
 export const RIVALS = [
   {
-    id: 'montfort',
-    name: 'Sir Renault de Montfort',
-    house: 'House Montfort',
+    id: 'sorel',
+    name: 'Guillaume Sorel',
+    house: 'Champion of the Montresor fair',
     hp: 108,
     lance: 18,
     skill: 0.16,
     reward: 65,
-    taunt: 'A farmer with a long stick. How charming.',
+    taunt: 'The fair is for farmers, boy. Go and hold somebody\u2019s horse.',
     pal: { horse: '#4a3a33', horseDark: '#2c211d', cloth: '#2f5aa8', cloth2: '#e6dcc0', plate: '#c8d3e0', plateDark: '#77839a', plume: '#dfe8ff' },
   },
   {
-    id: 'varga',
-    name: 'Dame Isolde Varga',
-    house: 'House Varga',
+    id: 'isabeau',
+    name: 'Isabeau de Loches',
+    house: 'A rival squire, with her own lance',
     hp: 126,
     lance: 20,
     skill: 0.3,
     reward: 95,
-    taunt: 'Mind the splinters, little rider.',
+    taunt: 'I have been taking these purses while you were wiping noses.',
     pal: { horse: '#3c3a30', horseDark: '#232118', cloth: '#2f7a4e', cloth2: '#e8c96a', plate: '#c2ccc8', plateDark: '#6f7a76', plume: '#f4e29a' },
   },
   {
-    id: 'ash',
-    name: 'Sir Corvin Ash',
-    house: 'The Ash Company',
+    id: 'bonnivet',
+    name: 'Bonnivet',
+    house: 'The admiral\u2019s riders',
     hp: 136,
     lance: 22,
     skill: 0.42,
     reward: 130,
-    taunt: 'I have broken better riders than you. Twice.',
+    taunt: 'Bayard still speaks of you. Sentiment is a poor shield.',
     pal: { horse: '#2f2a2c', horseDark: '#1a1618', cloth: '#3a3a42', cloth2: '#b8352f', plate: '#9aa0a8', plateDark: '#5a5f66', plume: '#d9524a' },
   },
   {
-    id: 'delacroix',
-    name: 'Dame Aliénor Delacroix',
-    house: 'House Delacroix',
+    id: 'brandon',
+    name: 'Charles Brandon',
+    house: 'The English party',
     hp: 162,
     lance: 25,
     skill: 0.55,
     reward: 180,
-    taunt: 'The crown keeps my seat warm. Do hurry.',
+    taunt: 'The Field of the Cloth of Gold, and they send me a squire.',
     pal: { horse: '#463548', horseDark: '#2a1f2c', cloth: '#6b3f9e', cloth2: '#e3d5ff', plate: '#d5d3e6', plateDark: '#7f7c99', plume: '#c9a6ff' },
   },
   {
-    id: 'wrynn',
-    name: 'Sir Gareth Wrynn',
-    house: 'The Iron Rose',
+    id: 'bourbon',
+    name: 'The Duke of Bourbon',
+    house: 'A colour that changes hands',
     hp: 192,
     lance: 28,
     skill: 0.68,
     reward: 240,
-    taunt: 'Twenty-one passes unbeaten. You will be twenty-two.',
+    taunt: 'Loyalty is a luxury of the well-fed.',
     pal: { horse: '#4d4238', horseDark: '#2e261f', cloth: '#a83a2e', cloth2: '#f0d9a0', plate: '#e2e5e8', plateDark: '#8b8f95', plume: '#f0d9a0' },
   },
   {
-    id: 'cain',
-    name: 'Sir Mordred Cain',
-    house: 'The Black Banner',
+    id: 'bart',
+    name: 'Lord Bart Sheen',
+    house: 'House Sheen, in borrowed colours',
     hp: 224,
     lance: 32,
     skill: 0.82,
     reward: 400,
-    taunt: 'The crown is not given, child. It is taken.',
+    taunt: 'WINNING! ...oh. My boy. You look taller.',
     pal: { horse: '#241f22', horseDark: '#12100f', cloth: '#1d1a1f', cloth2: '#8f1f2a', plate: '#5d5a63', plateDark: '#35323a', plume: '#c22a35' },
   },
 ];
@@ -431,9 +431,10 @@ export function emptySave() {
     runs: 0,
     crowns: 0,
     seenTutorial: false,
-    knight: 'ashby',
-    squire: 'wren',
-    lady: 'isolde',
+    knight: 'bart',
+    squire: 'gaspard',
+    lady: 'claude',
+    story: {},
     coat: { field: 'gules', charge: 'chevron' },
     barding: 0,
   };
@@ -453,6 +454,7 @@ export function loadSave() {
       coat: { ...base.coat, ...(parsed.coat || {}) },
       tokens: parsed.tokens || 0,
       beaten: Array.isArray(parsed.beaten) ? parsed.beaten : [],
+      story: parsed.story && typeof parsed.story === 'object' ? parsed.story : {},
     };
   } catch {
     return emptySave();
