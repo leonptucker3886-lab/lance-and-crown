@@ -1,0 +1,15 @@
+{
+  "name": "joustline-the-first",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "JoustLine: The First — mobile-first jousting duel with a retinue, Glow, and earned heraldry.",
+  "scripts": {
+    "start": "node tools/serve.mjs 3000",
+    "icons": "node tools/make-icons.mjs",
+    "test": "node tests/balance.mjs && node tests/pwa.mjs && node tests/smoke.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^26.0.0"
+  }
+}
