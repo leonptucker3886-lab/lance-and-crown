@@ -1,6 +1,7 @@
 // Bootstrap: save state, screens, ladder/armory, and the render loop.
 
 import * as Art from './art.js';
+import { drawCrest } from './crest.js';
 import { Match } from './match.js';
 import { PROLOGUE, STORY } from './story.js';
 import {
@@ -863,6 +864,74 @@ function registerWorker() {
 if (document.readyState === 'complete') registerWorker();
 else window.addEventListener('load', registerWorker, { once: true });
 
+/* ------------------------------------------------------------ cold open */
+
+const INTRO_MS = 6500;
+
+// LEONLINK PRESENTS -> the arms spinning up to full gilding -> the title ->
+// WINNING!. Plays once per launch, six and a half seconds, and any tap ends it.
+function playIntro(done) {
+  const el = $('intro');
+  const cv = $('intro-crest');
+  if (!el || !cv) {
+    done();
+    return;
+  }
+
+  const cctx = cv.getContext('2d');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const size = Math.round(Math.min(window.innerWidth * 0.8, window.innerHeight * 0.46, 340));
+  cv.width = Math.round(size * dpr);
+  cv.height = Math.round(size * dpr);
+  cv.style.width = size + 'px';
+  cv.style.height = size + 'px';
+  cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  el.hidden = false;
+  document.body.classList.add('intro-live');
+
+  const start = performance.now();
+  const spinFrom = 900;
+  const spinTo = 3800;
+  let raf = 0;
+  let closed = false;
+
+  const paint = (now) => {
+    const t = now - start;
+    const p = Math.min(1, Math.max(0, (t - spinFrom) / (spinTo - spinFrom)));
+    // Three half-turns that land square on the field, then a slow settle.
+    const eased = 1 - Math.pow(1 - p, 3);
+    const angle = (1 - eased) * Math.PI * 3 + (p === 1 ? Math.sin(t / 240) * 0.07 : 0);
+    cctx.clearRect(0, 0, size, size);
+    drawCrest(cctx, {
+      x: size / 2,
+      y: size / 2,
+      r: size * 0.34,
+      squash: Math.cos(angle),
+      t: Math.max(0, (t - spinFrom) / 1000),
+    });
+    if (t < INTRO_MS) raf = requestAnimationFrame(paint);
+  };
+  raf = requestAnimationFrame(paint);
+
+  const buzz = setTimeout(() => {
+    if (!closed) vibrate([16, 26, 20]);
+  }, 4900);
+
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    clearTimeout(buzz);
+    cancelAnimationFrame(raf);
+    el.hidden = true;
+    document.body.classList.remove('intro-live');
+    done();
+  };
+
+  el.addEventListener('pointerdown', close, { once: true });
+  setTimeout(close, INTRO_MS);
+}
+
 /* ---------------------------------------------------------------- boot */
 
 setMuted(!!save.muted);
@@ -870,12 +939,17 @@ $('btn-sound').style.opacity = save.muted ? '0.45' : '1';
 applyStyle();
 resize();
 
-// The story opens the game once, over the title. Afterwards the title leads.
-if (!save.seenPrologue) {
-  save.seenPrologue = true;
-  saveGame(save);
-  showStory(PROLOGUE, () => show('scr-title'));
-}
+// Brand first, then the prologue once, then the title.
+const boot = () => {
+  if (!save.seenPrologue) {
+    save.seenPrologue = true;
+    saveGame(save);
+    showStory(PROLOGUE, () => show('scr-title'));
+    return;
+  }
+  show('scr-title');
+};
+playIntro(boot);
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 140));
 if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
