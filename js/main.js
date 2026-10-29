@@ -2,16 +2,33 @@
 
 import * as Art from './art.js';
 import { Match } from './match.js';
+import { PROLOGUE, STORY } from './story.js';
 import {
   RIVALS,
   UPGRADES,
   MAX_LEVEL,
+  KNIGHTS,
+  SQUIRES,
+  LADIES,
+  FIELDS,
+  CHARGES,
+  BARDING,
   playerStats,
   rivalStats,
   upgradeCost,
   loadSave,
   saveGame,
   emptySave,
+  knightOf,
+  squireOf,
+  ladyOf,
+  ladyUnlocked,
+  fieldUnlocked,
+  chargeUnlocked,
+  chargeOf,
+  heroPal,
+  goldEarn,
+  tokenEarn,
 } from './data.js';
 import { Sfx, unlock, setMuted } from './audio.js';
 
@@ -100,8 +117,16 @@ function syncHUD() {
 
 function updateTitle() {
   $('title-gold').textContent = save.gold;
+  $('title-tokens').textContent = save.tokens;
   $('title-wins').textContent = save.beaten.length + '/' + RIVALS.length;
-  $('title-level').textContent = save.up.lance + save.up.armor + save.up.horse;
+  $('you-who').textContent = knightOf(save).name.split(' ').slice(-1)[0].toUpperCase();
+  const foot = document.querySelector('.title-foot .fine');
+  if (foot) foot.textContent = knightOf(save).name + ' rides for ' + ladyOf(save).name;
+}
+
+/** Push the player's heraldry + barding into the art module. */
+function applyStyle() {
+  Art.setHeroStyle({ pal: heroPal(save), barding: save.barding || 0, charge: chargeOf(save).id });
 }
 
 function isUnlocked(i) {
@@ -128,7 +153,7 @@ function renderLadder() {
     el.addEventListener('click', () => {
       unlock();
       Sfx.ui();
-      startMatch(r);
+      beginRival(r);
     });
     list.appendChild(el);
   });
@@ -136,6 +161,7 @@ function renderLadder() {
 
 function renderArmory() {
   $('armory-gold').textContent = save.gold;
+  $('armory-tokens').textContent = save.tokens;
   const wrap = $('armory-list');
   wrap.innerHTML = '';
   Object.keys(UPGRADES).forEach((key) => {
@@ -171,6 +197,203 @@ function renderArmory() {
       updateTitle();
     });
   });
+
+  renderBarding();
+  renderHeraldry();
+}
+
+/* ------------------------------------------------------------ retinue */
+
+function pickList(el, items, currentId, opts) {
+  el.innerHTML = '';
+  items.forEach((item) => {
+    const locked = opts.locked ? !!opts.locked(item) : false;
+    const btn = document.createElement('button');
+    btn.className = 'pick' + (item.id === currentId ? ' selected' : '') + (locked ? ' locked' : '');
+    btn.disabled = locked;
+    const swatch = item.pal ? `<span class="swatch" style="background:${item.pal.cloth}"></span>` : '';
+    const line = locked ? opts.lockedNote(item) : opts.note(item);
+    btn.innerHTML = `${swatch}<span class="body"><span class="nm">${item.name}</span><span class="bl">${item.blurb || ''}</span><span class="boon">${line}</span></span>`;
+    btn.addEventListener('click', () => {
+      if (locked) return;
+      Sfx.ui();
+      opts.pick(item);
+    });
+    el.appendChild(btn);
+  });
+}
+
+function renderRetinue() {
+  pickList($('knight-list'), KNIGHTS, save.knight, {
+    note: (k) => k.boon,
+    pick: (k) => {
+      save.knight = k.id;
+      saveGame(save);
+      applyStyle();
+      renderRetinue();
+      updateTitle();
+    },
+  });
+
+  pickList($('squire-list'), SQUIRES, save.squire, {
+    note: (s) => s.perk,
+    pick: (s) => {
+      save.squire = s.id;
+      saveGame(save);
+      renderRetinue();
+    },
+  });
+
+  pickList($('lady-list'), LADIES, save.lady, {
+    locked: (l) => !ladyUnlocked(save, l),
+    lockedNote: (l) => `Ride for her after ${l.unlock} rival${l.unlock === 1 ? '' : 's'}`,
+    note: (l) => l.boon,
+    pick: (l) => {
+      save.lady = l.id;
+      saveGame(save);
+      renderRetinue();
+      updateTitle();
+    },
+  });
+}
+
+/* ---------------------------------------------------------- heraldry */
+
+function chipRow(labelText, items, currentId, isUnlocked, onPick, dotStyle) {
+  const row = document.createElement('div');
+  const label = document.createElement('div');
+  label.className = 'row-label';
+  label.textContent = labelText;
+  const chips = document.createElement('div');
+  chips.className = 'chip-row';
+
+  items.forEach((item) => {
+    const ok = isUnlocked(item);
+    const chip = document.createElement('button');
+    chip.className = 'chip' + (item.id === currentId ? ' selected' : '') + (ok ? '' : ' locked');
+    chip.disabled = !ok;
+    chip.innerHTML =
+      (dotStyle ? `<span class="dot" style="${dotStyle(item)}"></span>` : '') +
+      `<span>${item.name}</span>` +
+      (ok ? '' : `<span class="need">${item.unlock} rivals</span>`);
+    chip.addEventListener('click', () => {
+      if (!ok) return;
+      Sfx.ui();
+      onPick(item);
+    });
+    chips.appendChild(chip);
+  });
+
+  row.appendChild(label);
+  row.appendChild(chips);
+  return row;
+}
+
+function renderHeraldry() {
+  const wrap = $('heraldry-list');
+  wrap.innerHTML = '';
+  wrap.appendChild(
+    chipRow(
+      'Field',
+      FIELDS,
+      save.coat.field,
+      (f) => fieldUnlocked(save, f),
+      (f) => {
+        save.coat.field = f.id;
+        saveGame(save);
+        applyStyle();
+        renderHeraldry();
+      },
+      (f) => `background:${f.color}`
+    )
+  );
+  wrap.appendChild(
+    chipRow(
+      'Charge',
+      CHARGES,
+      save.coat.charge,
+      (c) => chargeUnlocked(save, c),
+      (c) => {
+        save.coat.charge = c.id;
+        saveGame(save);
+        applyStyle();
+        renderHeraldry();
+      },
+      () => 'background:var(--gold);opacity:.9'
+    )
+  );
+}
+
+function renderBarding() {
+  const el = $('barding-list');
+  el.innerHTML = '';
+  const worn = save.barding || 0;
+
+  BARDING.forEach((tier) => {
+    const owned = tier.level <= worn;
+    const current = tier.level === worn;
+    const next = tier.level === worn + 1;
+    const afford = save.tokens >= tier.cost;
+    const btn = document.createElement('button');
+    btn.className = 'pick' + (current ? ' selected' : '') + (!owned && !(next && afford) ? ' locked' : '');
+    btn.disabled = current || !(owned || (next && afford));
+    const state = current ? 'Worn now' : owned ? 'Owned' : next ? (afford ? 'Unlock' : 'Not enough Glow') : 'Later';
+    btn.innerHTML =
+      `<span class="body"><span class="nm">${tier.name}</span><span class="bl">${tier.blurb}</span>` +
+      `<span class="boon">${state}</span></span>` +
+      `<span class="cost">${owned ? '\u2014' : tier.cost + ' Glow'}</span>`;
+    btn.addEventListener('click', () => {
+      if (current) return;
+      if (!owned) {
+        if (!next || save.tokens < tier.cost) return;
+        save.tokens -= tier.cost;
+      }
+      save.barding = Math.max(worn, tier.level);
+      saveGame(save);
+      Sfx.upgrade();
+      applyStyle();
+      renderArmory();
+      updateTitle();
+    });
+    el.appendChild(btn);
+  });
+}
+
+/* --------------------------------------------------------------- story */
+
+let storyRun = null;
+
+function renderStory() {
+  const { panels, i } = storyRun;
+  const panel = panels[i];
+  $('story-kicker').textContent = panel.kicker || '';
+  $('story-title').textContent = panel.title || '';
+  $('story-text').textContent = panel.text;
+  $('story-progress').textContent = i + 1 + ' / ' + panels.length;
+  $('btn-story-next').textContent = i === panels.length - 1 ? 'Continue' : 'Next';
+}
+
+function showStory(panels, done) {
+  storyRun = { panels, i: 0, done };
+  renderStory();
+  hideScreens();
+  show('scr-story');
+}
+
+/** First meeting with a rival gets its story panels; later meetings go straight in. */
+function beginRival(rival) {
+  save.story = save.story || {};
+  const chapter = STORY[rival.id];
+  if (chapter && !save.story[rival.id]) {
+    save.story[rival.id] = true;
+    saveGame(save);
+    showStory(chapter.intro, () => {
+      show('scr-ladder');
+      startMatch(rival);
+    });
+    return;
+  }
+  startMatch(rival);
 }
 
 /* --------------------------------------------------------------- match */
@@ -192,8 +415,9 @@ function launch(rival) {
   hideScreens();
   document.body.classList.add('in-match');
 
-  const stats = playerStats(save.up);
+  const stats = playerStats(save.up, save);
   const foeStats = rivalStats(rival);
+  applyStyle();
   match = new Match({
     rival,
     stats,
@@ -213,16 +437,24 @@ function launch(rival) {
 function endMatch(res) {
   match = null;
   document.body.classList.remove('in-match');
-  const ps = playerStats(save.up);
+  const ps = playerStats(save.up, save);
 
-  let gold = 0;
-  if (res.win) {
-    gold = res.rival.reward + Math.round((Math.max(0, res.youHP) / ps.maxHP) * 30);
-    if (!save.beaten.includes(res.rival.id)) save.beaten.push(res.rival.id);
-  } else {
-    gold = Math.floor(res.rival.reward * 0.2);
-  }
+  const firstClear = !!res.win && !save.beaten.includes(res.rival.id);
+  const gold = goldEarn(save, {
+    win: res.win,
+    youHP: res.youHP,
+    maxHP: ps.maxHP,
+    reward: res.rival.reward,
+  });
+  const tokens = tokenEarn(save, {
+    win: res.win,
+    youHP: res.youHP,
+    maxHP: ps.maxHP,
+    firstClear,
+  });
+  if (firstClear) save.beaten.push(res.rival.id);
   save.gold += gold;
+  save.tokens += tokens;
   save.runs += 1;
   saveGame(save);
   Sfx.coin();
@@ -230,6 +462,7 @@ function endMatch(res) {
 
   if (res.win && save.beaten.length >= RIVALS.length) {
     $('champ-gold').textContent = save.gold;
+    $('champ-tokens').textContent = save.tokens;
     $('champ-runs').textContent = save.runs;
     show('scr-champion');
     return;
@@ -241,8 +474,11 @@ function endMatch(res) {
     ? 'You put ' + res.rival.name + ' in the dirt.'
     : 'You hit the sand. ' + res.rival.name + ' rides on.';
   $('res-gold').textContent = '+' + gold;
+  $('res-tokens').textContent = '+' + tokens;
   $('res-passes').textContent = res.passes;
   $('res-hp').textContent = Math.max(0, Math.round(res.youHP));
+  const chapter = STORY[res.rival.id];
+  $('res-story').textContent = chapter ? (res.win ? chapter.win : chapter.loss) : '';
   document.querySelector('.result-card').classList.toggle('lose', !res.win);
   show('scr-result');
 }
@@ -343,6 +579,38 @@ $('btn-armory').addEventListener('click', () => {
   armoryReturn = 'scr-title';
   renderArmory();
   show('scr-armory');
+});
+
+$('btn-retinue').addEventListener('click', () => {
+  unlock();
+  Sfx.ui();
+  renderRetinue();
+  show('scr-retinue');
+});
+
+$('btn-retinue-back').addEventListener('click', () => {
+  Sfx.ui();
+  updateTitle();
+  show('scr-title');
+});
+
+$('btn-retinue-done').addEventListener('click', () => {
+  Sfx.ui();
+  updateTitle();
+  show('scr-title');
+});
+
+$('btn-story-next').addEventListener('click', () => {
+  Sfx.ui();
+  if (!storyRun) return;
+  if (storyRun.i < storyRun.panels.length - 1) {
+    storyRun.i += 1;
+    renderStory();
+    return;
+  }
+  const done = storyRun.done;
+  storyRun = null;
+  if (done) done();
 });
 
 $('btn-ladder-armory').addEventListener('click', () => {
@@ -521,7 +789,15 @@ else window.addEventListener('load', registerWorker, { once: true });
 
 setMuted(!!save.muted);
 $('btn-sound').style.opacity = save.muted ? '0.45' : '1';
+applyStyle();
 resize();
+
+// The story opens the game once, over the title. Afterwards the title leads.
+if (!save.seenPrologue) {
+  save.seenPrologue = true;
+  saveGame(save);
+  showStory(PROLOGUE, () => show('scr-title'));
+}
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 140));
 if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
