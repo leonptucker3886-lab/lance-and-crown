@@ -1,0 +1,58 @@
+# Deploy JoustLine to Vercel on every push to main.
+#
+# Why this exists: the Vercel project `lance-and-crown` is not linked to this
+# repository, so Vercel never receives a push event and never builds on its own
+# (the repo's Deployments API has stayed empty through every push). This closes
+# that gap with the CLI, which needs no Git integration.
+#
+# One-time setup — add a repository secret named VERCEL_TOKEN:
+#   Vercel dashboard -> Account Settings -> Tokens -> Create Token
+#   GitHub repo -> Settings -> Secrets and variables -> Actions -> New secret
+#
+# The project and org ids below are public identifiers, not credentials, so
+# they live here rather than in a secret. Until VERCEL_TOKEN exists this
+# workflow runs and skips the deploy step instead of failing.
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: team_H9UMORlo1bM8ah2vzLl75Ujs
+      VERCEL_PROJECT_ID: prj_s8QCEhICBZgLrc5N6nzC5vU5dZ8l
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run the suites
+        run: |
+          # No lockfile is committed, so `npm ci` would fail here.
+          npm install --no-audit --no-fund
+          node tests/balance.mjs
+          node tests/pwa.mjs
+          node tests/smoke.mjs
+
+      - name: Deploy to production
+        if: ${{ secrets.VERCEL_TOKEN != '' }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
+
+      - name: Note the missing token
+        if: ${{ secrets.VERCEL_TOKEN == '' }}
+        run: |
+          echo "VERCEL_TOKEN is not set, so this push was tested but not deployed."
+          echo "Add it under Settings -> Secrets and variables -> Actions."
