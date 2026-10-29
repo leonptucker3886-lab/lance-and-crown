@@ -2,7 +2,7 @@
 // from a home-screen icon. Everything is network-first while online, so a
 // deploy is picked up on the next load, and falls back to the cache offline.
 
-const VERSION = 'lance-crown-v3';
+const VERSION = 'joustline-v2';
 
 const PRECACHE = [
   './',
@@ -12,6 +12,7 @@ const PRECACHE = [
   './js/match.js',
   './js/art.js',
   './js/data.js',
+  './js/story.js',
   './js/audio.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
@@ -40,7 +41,7 @@ self.addEventListener('activate', (event) => {
 });
 
 function offlineResponse() {
-  return new Response('Offline — reopen Lance & Crown once you have a connection.', {
+  return new Response('Offline — reopen JoustLine once you have a connection.', {
     status: 503,
     statusText: 'Offline',
     headers: { 'Content-Type': 'text/plain; charset=utf-8' },

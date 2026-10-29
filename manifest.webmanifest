@@ -1,7 +1,7 @@
 {
-  "name": "Lance & Crown — Jousting Duel",
-  "short_name": "Lance Crown",
-  "description": "A mobile-first jousting duel: gallop, aim and strike your way past six rivals to the crown.",
+  "name": "JoustLine: The First",
+  "short_name": "JoustLine",
+  "description": "You are the squire of Montresor: pick your knight, squire and lady, then ride the lists for the crown. A LeonLink game.",
   "start_url": "./",
   "scope": "./",
   "id": "./",
