@@ -311,7 +311,7 @@ export function drawCrowdCheer(ctx, { W, H, t, power }) {
 
 /* -------------------------------------------------------------- knight */
 
-export const ART_H = 762;
+export const ART_H = 162;
 export const LANCE_REACH = 118;
 
 /** The player's own heraldry. */
