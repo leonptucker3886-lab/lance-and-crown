@@ -311,7 +311,7 @@ export function drawCrowdCheer(ctx, { W, H, t, power }) {
 
 /* -------------------------------------------------------------- knight */
 
-export const ART_H = 162;
+export const ART_H = 762;
 export const LANCE_REACH = 118;
 
 /** The player's own heraldry. */
@@ -325,6 +325,90 @@ export const HERO_PAL = {
   plume: '#f2d98a',
 };
 
+/* ------------------------------------------------- player heraldry style */
+
+// The player's own look: coat-of-arms field, charge, and how much horse armour
+// they have bought. Only applied when drawKnight is handed HERO_PAL, so rivals
+// keep their own heraldry.
+let heroStyle = { pal: HERO_PAL, barding: 0, charge: 'chevron' };
+
+export function setHeroStyle(style = {}) {
+  heroStyle = {
+    pal: style.pal || HERO_PAL,
+    barding: Math.max(0, Math.min(4, style.barding || 0)),
+    charge: style.charge || 'chevron',
+  };
+}
+
+/** A charge, drawn inside a shield roughly 22 wide and 30 tall. */
+function drawCharge(ctx, id, color) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 2.6;
+  if (id === 'cross') {
+    ctx.fillRect(-1.6, -10, 3.2, 18);
+    ctx.fillRect(-6, -4, 12, 3.2);
+  } else if (id === 'saltire') {
+    ctx.beginPath();
+    ctx.moveTo(-6, -8);
+    ctx.lineTo(6, 8);
+    ctx.moveTo(6, -8);
+    ctx.lineTo(-6, 8);
+    ctx.stroke();
+  } else if (id === 'chevron') {
+    ctx.beginPath();
+    ctx.moveTo(-7, 2);
+    ctx.lineTo(0, -7);
+    ctx.lineTo(7, 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-7, 9);
+    ctx.lineTo(0, 0);
+    ctx.lineTo(7, 9);
+    ctx.stroke();
+  } else if (id === 'roundel') {
+    ctx.beginPath();
+    ctx.arc(0, -1, 5.6, 0, TAU);
+    ctx.fill();
+  } else if (id === 'crown') {
+    ctx.beginPath();
+    ctx.moveTo(-7, 6);
+    ctx.lineTo(-7, -5);
+    ctx.lineTo(-3.5, 0);
+    ctx.lineTo(0, -7);
+    ctx.lineTo(3.5, 0);
+    ctx.lineTo(7, -5);
+    ctx.lineTo(7, 6);
+    ctx.closePath();
+    ctx.fill();
+  } else if (id === 'lion') {
+    ctx.beginPath();
+    ctx.ellipse(-1, 1, 4.8, 3.4, 0.18, 0, TAU);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(4, -6, 3.1, 0, TAU);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-4, 3);
+    ctx.lineTo(-8, 9);
+    ctx.moveTo(2, 3);
+    ctx.lineTo(6, 9);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-5, -2);
+    ctx.quadraticCurveTo(-11, -8, -8, -12);
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.arc(0, -1, 4.6, 0, TAU);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 /**
  * Draw a mounted jouster.
  * Local units: ground at y=0, up is negative, facing +x, art height ~162.
@@ -335,7 +419,7 @@ export function drawKnight(ctx, o) {
     y,
     k,
     facing = 1,
-    pal,
+    pal: palArg,
     t = 0,
     gait = 0,
     couch = 0.7,
@@ -345,6 +429,10 @@ export function drawKnight(ctx, o) {
     glow = 0,
     shieldOn = true,
   } = o;
+
+  // The player is drawn with their own heraldry and barding; rivals are not.
+  const isHero = palArg === HERO_PAL;
+  const pal = isHero ? heroStyle.pal : palArg;
 
   ctx.save();
   ctx.translate(x, y);
@@ -454,6 +542,52 @@ export function drawKnight(ctx, o) {
   ctx.closePath();
   ctx.fill();
   ctx.globalAlpha = 1;
+
+  /* ---------- horse armour (Glow-purchased, player only)
+   */
+  if (isHero && heroStyle.barding > 0) {
+    const lvl = heroStyle.barding;
+    const trim = lvl >= 4 ? pal.cloth2 : pal.plateDark;
+    // peytral across the chest
+    ctx.fillStyle = pal.plate;
+    ctx.beginPath();
+    ctx.moveTo(-27, -78 + bob);
+    ctx.quadraticCurveTo(0, -87 + bob, 26, -76 + bob);
+    ctx.quadraticCurveTo(31, -58 + bob, 20, -46 + bob);
+    ctx.quadraticCurveTo(0, -40 + bob, -20, -47 + bob);
+    ctx.quadraticCurveTo(-31, -58 + bob, -27, -78 + bob);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = trim;
+    ctx.lineWidth = lvl >= 4 ? 2.4 : 1.6;
+    ctx.stroke();
+    if (lvl >= 2) {
+      // chanfron over the horse's face
+      ctx.fillStyle = pal.plate;
+      ctx.beginPath();
+      ctx.moveTo(72, -124 + bob);
+      ctx.quadraticCurveTo(94, -123 + bob, 100, -108 + bob);
+      ctx.quadraticCurveTo(93, -99 + bob, 84, -102 + bob);
+      ctx.lineTo(71, -110 + bob);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = trim;
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+    }
+    if (lvl >= 3) {
+      // crinet segments down the neck
+      ctx.strokeStyle = pal.plate;
+      ctx.lineWidth = 6;
+      for (let i = 0; i < 4; i++) {
+        const p = i / 3;
+        ctx.beginPath();
+        ctx.moveTo(33 + p * 35, -72 - p * 35 + bob);
+        ctx.lineTo(46 + p * 32, -78 - p * 33 + bob);
+        ctx.stroke();
+      }
+    }
+  }
 
   /* ---------- near legs
    */
@@ -568,8 +702,7 @@ export function drawKnight(ctx, o) {
     ctx.lineWidth = 2.4;
     ctx.stroke();
     ctx.fillStyle = pal.cloth2;
-    ctx.fillRect(-1.6, -10, 3.2, 18);
-    ctx.fillRect(-6, -6, 12, 3.2);
+    drawCharge(ctx, isHero ? heroStyle.charge : 'cross', pal.cloth2);
     ctx.restore();
   }
 
